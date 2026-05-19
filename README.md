@@ -1,96 +1,106 @@
-# DeviceManagementPlatform
+# Device Management Platform
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Enterprise-grade cloud platform for managing connected devices at scale. The platform is structured to support device registry, firmware management, OTA campaigns, telemetry ingestion, notifications, administration workflows, infrastructure automation, CI/CD, and observability foundations.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Tech Stack
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- Nx monorepo
+- pnpm package management
+- Angular admin frontend
+- Node.js and NestJS backend services
+- TypeScript
+- ESLint and Prettier
+- Commitlint, Husky, and lint-staged
+- GitHub Actions
+- Docker, Kubernetes, Helm, and Terraform folders for future infrastructure work
 
-## Run tasks
+## Repository Structure
 
-To run tasks with Nx use:
-
-```sh
-npx nx <target> <project-name>
+```text
+apps/
+  web-admin/
+  device-api/
+  firmware-api/
+  telemetry-api/
+  notification-service/
+  ota-update-service/
+libs/
+  shared-types/
+  shared-utils/
+  auth/
+  logging/
+  validation/
+  device-domain/
+  firmware-domain/
+  telemetry-domain/
+infra/
+  docker/
+  kubernetes/
+  helm/
+  terraform/
+tools/
+  scripts/
+  generators/
+docs/
+  architecture/
+  api/
+  adr/
 ```
 
-For example:
+## Getting Started
 
-```sh
-npx nx build myproject
+Use Node.js 22 and pnpm 9.15.9 or newer.
+
+Install dependencies:
+
+```bash
+pnpm install
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+Run the admin portal:
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+```bash
+pnpm start:web
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+Run a backend service:
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
-
-# Generate a library
-npx nx g @nx/react:lib some-lib
+```bash
+pnpm start:device-api
+pnpm start:firmware-api
+pnpm start:ota
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+Validate the workspace:
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+```bash
+pnpm format:check
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+## Development Standards
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Use Nx generators for new apps and libraries.
+- Keep reusable contracts and utilities in `libs/`.
+- Prefer domain libraries for business concepts and application projects for delivery mechanisms.
+- Run format, lint, tests, and builds before opening a pull request.
+- Use conventional commits, for example `feat(device-api): add registry endpoint`.
 
-### Step 2
+## Branch Strategy
 
-Use the following command to configure a CI workflow for your workspace:
+- `main` is the production-ready branch.
+- `develop` is the integration branch for upcoming releases.
+- Feature work should branch from `develop` using `feature/<short-description>`.
+- Hotfixes should branch from `main` using `hotfix/<short-description>`.
 
-```sh
-npx nx g ci-workflow
+## Commit Message Format
+
+This repository uses Conventional Commits enforced by commitlint:
+
+```text
+<type>(optional-scope): <description>
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Common types include `feat`, `fix`, `docs`, `refactor`, `test`, `build`, and `chore`.

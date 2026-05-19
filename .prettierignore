@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.tmp
+.env
+/.nx/cache
+/.nx/workspace-data
+.angular

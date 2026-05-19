@@ -1,0 +1,11 @@
+* @iot-device-platform/platform-engineers
+
+/apps/web-admin/ @iot-device-platform/frontend-team
+/apps/device-api/ @iot-device-platform/backend-team
+/apps/firmware-api/ @iot-device-platform/backend-team
+/apps/telemetry-api/ @iot-device-platform/backend-team
+/apps/notification-service/ @iot-device-platform/backend-team
+/apps/ota-update-service/ @iot-device-platform/backend-team
+
+/infra/ @iot-device-platform/devops-team
+/.github/ @iot-device-platform/platform-engineers
