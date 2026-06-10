@@ -7,8 +7,9 @@ Enterprise-grade cloud platform for managing connected devices at scale. The pla
 - Nx monorepo
 - pnpm package management
 - Angular admin frontend
-- Node.js and NestJS backend services
+- Java and Spring Boot backend services
 - TypeScript
+- Maven
 - ESLint and Prettier
 - Commitlint, Husky, and lint-staged
 - GitHub Actions
@@ -19,11 +20,12 @@ Enterprise-grade cloud platform for managing connected devices at scale. The pla
 ```text
 apps/
   web-admin/
-  device-api/
   firmware-api/
   telemetry-api/
   notification-service/
   ota-update-service/
+services/
+  device-api/
 libs/
   shared-types/
   shared-utils/
@@ -49,7 +51,8 @@ docs/
 
 ## Getting Started
 
-Use Node.js 22 and pnpm 9.15.9 or newer.
+Node.js 22 is required for the Nx workspace. Use pnpm 9.15.9 or newer. Use
+Java 17 or newer for Spring Boot services.
 
 Install dependencies:
 
@@ -67,6 +70,11 @@ Run a backend service:
 
 ```bash
 pnpm start:device-api
+```
+
+Run remaining generated backend placeholders:
+
+```bash
 pnpm start:firmware-api
 pnpm start:ota
 ```
@@ -78,6 +86,13 @@ pnpm format:check
 pnpm lint
 pnpm test
 pnpm build
+```
+
+Validate the Spring Boot device API:
+
+```bash
+pnpm test:device-api
+pnpm build:device-api
 ```
 
 ## Development Standards

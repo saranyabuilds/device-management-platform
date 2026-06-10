@@ -14,6 +14,7 @@
         "browser": "apps/web-admin/src/main.ts",
         "tsConfig": "apps/web-admin/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
+        "progress": false,
         "assets": [
           {
             "glob": "**/*",

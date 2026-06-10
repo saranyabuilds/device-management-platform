@@ -9,9 +9,11 @@
   },
   "scripts": {
     "start:web": "nx serve web-admin",
-    "start:device-api": "nx serve device-api",
+    "start:device-api": "cd services/device-api && ./mvnw spring-boot:run",
     "start:firmware-api": "nx serve firmware-api",
     "start:ota": "nx serve ota-update-service",
+    "build:device-api": "cd services/device-api && ./mvnw clean package",
+    "test:device-api": "cd services/device-api && ./mvnw test",
     "build": "nx run-many -t build --all",
     "test": "nx run-many -t test --all",
     "lint": "nx run-many -t lint --all",

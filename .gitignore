@@ -1,6 +1,7 @@
 node_modules
 dist
 coverage
+target
 .env
 .env.local
 .DS_Store
@@ -27,3 +28,5 @@ testem.log
 Thumbs.db
 .claude/worktrees
 .claude/settings.local.json
+
+services/*/.mvn/apache-maven-*
