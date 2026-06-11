@@ -1,0 +1,63 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    #drawer
+    class="shell__nav"
+    [fixedInViewport]="isHandset$ | async"
+    [mode]="(isHandset$ | async) ? 'over' : 'side'"
+    [opened]="(isHandset$ | async) === false"
+  >
+    <div class="shell__brand">
+      <span class="shell__brand-mark">DM</span>
+      <span>Admin Portal</span>
+    </div>
+
+    <mat-nav-list aria-label="Admin navigation">
+      @for (item of navItems; track item.route) {
+        <a
+          mat-list-item
+          [routerLink]="item.route"
+          routerLinkActive="shell__nav-item--active"
+          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+          (click)="closeNavigation(drawer)"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="shell__content">
+    <mat-toolbar class="shell__toolbar">
+      @if (isHandset$ | async) {
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Open navigation"
+          (click)="drawer.toggle()"
+        >
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+
+      <span class="shell__title">Device Management Admin</span>
+      <span class="shell__spacer"></span>
+
+      <button mat-button type="button" [matMenuTriggerFor]="userMenu">
+        <mat-icon>account_circle</mat-icon>
+        <span>{{ (currentUser$ | async)?.displayName ?? 'Admin' }}</span>
+      </button>
+
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="shell__main">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

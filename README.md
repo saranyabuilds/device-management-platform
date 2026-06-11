@@ -19,6 +19,7 @@ Enterprise-grade cloud platform for managing connected devices at scale. The pla
 
 ```text
 apps/
+  admin-portal/
   web-admin/
   firmware-api/
   telemetry-api/
@@ -63,7 +64,9 @@ pnpm install
 Run the admin portal:
 
 ```bash
-pnpm start:web
+pnpm start
+# or
+pnpm start:admin-portal
 ```
 
 Run a backend service:
@@ -86,6 +89,13 @@ pnpm format:check
 pnpm lint
 pnpm test
 pnpm build
+```
+
+Validate only the admin portal:
+
+```bash
+pnpm build:admin-portal
+pnpm test:admin-portal
 ```
 
 Validate the Spring Boot device API:

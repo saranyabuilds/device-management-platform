@@ -1,0 +1,74 @@
+.shell {
+  min-height: 100vh;
+}
+
+.shell__nav {
+  width: 264px;
+  border-right: 1px solid var(--app-border-color);
+}
+
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  padding: 0 20px;
+  font-weight: 700;
+}
+
+.shell__brand-mark {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  background: #005cbb;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.shell__nav-item--active {
+  background: #e7f0ff;
+  color: #004a99;
+}
+
+.shell__content {
+  min-height: 100vh;
+}
+
+.shell__toolbar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  border-bottom: 1px solid var(--app-border-color);
+  background: #fff;
+  color: #1d2633;
+}
+
+.shell__title {
+  overflow: hidden;
+  margin-left: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell__spacer {
+  flex: 1 1 auto;
+}
+
+.shell__main {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+}
+
+@media (max-width: 720px) {
+  .shell__main {
+    padding: 18px;
+  }
+
+  .shell__title {
+    font-size: 1rem;
+  }
+}

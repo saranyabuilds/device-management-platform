@@ -1,0 +1,90 @@
+/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+$admin-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$cyan-palette,
+    ),
+    typography: (
+      plain-family: (
+        Inter,
+        Roboto,
+        'Helvetica Neue',
+        Arial,
+        sans-serif,
+      ),
+      brand-family: (
+        Inter,
+        Roboto,
+        'Helvetica Neue',
+        Arial,
+        sans-serif,
+      ),
+    ),
+    density: (
+      scale: 0,
+    ),
+  )
+);
+
+@include mat.core();
+
+:root {
+  @include mat.all-component-themes($admin-theme);
+  --app-color-accent: #006d75;
+  --app-color-warning: #b3261e;
+  --app-surface-muted: #f5f7fb;
+  --app-border-color: #d8dee8;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-surface-muted);
+  color: #1d2633;
+  font-family: Inter, Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.full-height {
+  min-height: 100%;
+}
+
+.page-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 0;
+  color: #5b6678;
+}
+
+.surface-panel {
+  border: 1px solid var(--app-border-color);
+  border-radius: 8px;
+  background: #fff;
+  padding: 24px;
+}
+
+.stack-md {
+  display: grid;
+  gap: 16px;
+}

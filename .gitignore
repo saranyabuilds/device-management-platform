@@ -30,3 +30,5 @@ Thumbs.db
 .claude/settings.local.json
 
 services/*/.mvn/apache-maven-*
+
+.angular
