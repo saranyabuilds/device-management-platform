@@ -1,0 +1,140 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: Image tag to deploy, for example sha-495954d0f0aa
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment metadata
+        id: meta
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          if ! [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Invalid image tag: ${IMAGE_TAG}" >&2
+            exit 1
+          fi
+
+          repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          echo "admin_image=${REGISTRY}/${repo}/admin-portal:${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "device_image=${REGISTRY}/${repo}/device-api:${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Login to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GHCR_TOKEN || github.token }}
+
+      - name: Verify image tags exist
+        run: |
+          docker manifest inspect "${{ steps.meta.outputs.admin_image }}" >/dev/null
+          docker manifest inspect "${{ steps.meta.outputs.device_image }}" >/dev/null
+
+      - name: Select Kubernetes credentials
+        id: kube
+        shell: bash
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+          KUBE_CONFIG_DEV: ${{ secrets.KUBE_CONFIG_DEV }}
+          KUBE_CONFIG_STAGING: ${{ secrets.KUBE_CONFIG_STAGING }}
+          KUBE_CONFIG_PROD: ${{ secrets.KUBE_CONFIG_PROD }}
+          KUBE_NAMESPACE_DEV: ${{ secrets.KUBE_NAMESPACE_DEV }}
+          KUBE_NAMESPACE_STAGING: ${{ secrets.KUBE_NAMESPACE_STAGING }}
+          KUBE_NAMESPACE_PROD: ${{ secrets.KUBE_NAMESPACE_PROD }}
+        run: |
+          case "${TARGET_ENV}" in
+            dev)
+              kube_config="${KUBE_CONFIG_DEV}"
+              namespace="${KUBE_NAMESPACE_DEV}"
+              ;;
+            staging)
+              kube_config="${KUBE_CONFIG_STAGING}"
+              namespace="${KUBE_NAMESPACE_STAGING}"
+              ;;
+            prod)
+              kube_config="${KUBE_CONFIG_PROD}"
+              namespace="${KUBE_NAMESPACE_PROD}"
+              ;;
+            *)
+              echo "Unsupported environment: ${TARGET_ENV}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${kube_config}" ] || [ -z "${namespace}" ]; then
+            echo "Missing Kubernetes secret configuration for ${TARGET_ENV}" >&2
+            exit 1
+          fi
+
+          write_kubeconfig() {
+            if printf '%s' "${kube_config}" | base64 -d > "${HOME}/.kube/config" 2>/dev/null; then
+              return
+            fi
+
+            printf '%s' "${kube_config}" > "${HOME}/.kube/config"
+          }
+
+          mkdir -p "${HOME}/.kube"
+          write_kubeconfig
+          chmod 600 "${HOME}/.kube/config"
+          echo "namespace=${namespace}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Apply manifests
+        run: kubectl apply -n "${{ steps.kube.outputs.namespace }}" -k "deploy/k8s/overlays/${{ inputs.environment }}"
+
+      - name: Update deployment images
+        run: |
+          kubectl -n "${{ steps.kube.outputs.namespace }}" set image deployment/admin-portal-${{ inputs.environment }} \
+            admin-portal="${{ steps.meta.outputs.admin_image }}"
+          kubectl -n "${{ steps.kube.outputs.namespace }}" set image deployment/device-api-${{ inputs.environment }} \
+            device-api="${{ steps.meta.outputs.device_image }}"
+
+      - name: Verify rollout
+        run: |
+          kubectl -n "${{ steps.kube.outputs.namespace }}" rollout status deployment/admin-portal-${{ inputs.environment }} --timeout=180s
+          kubectl -n "${{ steps.kube.outputs.namespace }}" rollout status deployment/device-api-${{ inputs.environment }} --timeout=180s
+          kubectl -n "${{ steps.kube.outputs.namespace }}" get deploy,svc -l app.kubernetes.io/part-of=device-management-platform
+
+      - name: Summary
+        run: |
+          echo "Deployed ${{ inputs.environment }}:" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- ${{ steps.meta.outputs.admin_image }}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- ${{ steps.meta.outputs.device_image }}" >> "${GITHUB_STEP_SUMMARY}"

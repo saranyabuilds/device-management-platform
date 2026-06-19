@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+nameSuffix: -staging
+resources:
+  - ../../base
+labels:
+  - pairs:
+      app.kubernetes.io/environment: staging
+    includeSelectors: true
+replicas:
+  - name: admin-portal
+    count: 2
+  - name: device-api
+    count: 2

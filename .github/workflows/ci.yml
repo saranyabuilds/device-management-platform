@@ -1,14 +1,17 @@
-name: CI
+name: Continuous Integration
 
 on:
-  pull_request:
-    branches:
-      - main
-      - develop
   push:
     branches:
-      - main
       - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -31,7 +34,16 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
       - name: Install dependencies
+        env:
+          HUSKY: '0'
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
@@ -44,4 +56,10 @@ jobs:
         run: pnpm test
 
       - name: Build affected projects
+        env:
+          CI: 'true'
         run: pnpm affected:build
+
+      - name: Maven test device-api
+        working-directory: services/device-api
+        run: ./mvnw test

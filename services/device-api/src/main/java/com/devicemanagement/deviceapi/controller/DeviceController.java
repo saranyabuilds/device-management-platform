@@ -10,6 +10,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,7 @@ public class DeviceController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
   @Operation(summary = "Create device", description = "Registers a new hardware device")
   public DeviceResponse createDevice(@Valid @RequestBody DeviceCreateRequest request) {
     log.info("Device creation request received for serialNumber={}", request.serialNumber());
@@ -36,6 +38,7 @@ public class DeviceController {
   }
 
   @GetMapping("/{serialNumber}")
+  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
   @Operation(summary = "Get device", description = "Returns device details by serial number")
   public DeviceResponse getDeviceBySerialNumber(@PathVariable String serialNumber) {
     log.info("Device lookup request received for serialNumber={}", serialNumber);
@@ -43,6 +46,7 @@ public class DeviceController {
   }
 
   @GetMapping
+  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
   @Operation(summary = "List devices", description = "Returns all in-memory sample devices")
   public List<DeviceResponse> getDevices() {
     log.info("Device list request received");

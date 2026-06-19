@@ -1,6 +1,23 @@
 spring:
   application:
     name: device-api
+  security:
+    oauth2:
+      client:
+        registration:
+          platform:
+            client-id: ${OAUTH2_CLIENT_ID:device-api-local}
+            client-secret: ${OAUTH2_CLIENT_SECRET:local-oauth2-client-secret}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          platform:
+            authorization-uri: ${OAUTH2_AUTHORIZATION_URI:http://localhost:8081/realms/device-management/protocol/openid-connect/auth}
+            token-uri: ${OAUTH2_TOKEN_URI:http://localhost:8081/realms/device-management/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:8081/realms/device-management/protocol/openid-connect/certs}
+            user-info-uri: ${OAUTH2_USER_INFO_URI:http://localhost:8081/realms/device-management/protocol/openid-connect/userinfo}
+            user-name-attribute: ${OAUTH2_USER_NAME_ATTRIBUTE:sub}
 
 server:
   port: 8080
@@ -26,3 +43,41 @@ springdoc:
     path: /swagger-ui/index.html
   api-docs:
     path: /v3/api-docs
+
+app:
+  auth:
+    jwt:
+      issuer: ${JWT_ISSUER:device-api}
+      secret: ${JWT_SECRET:local-development-jwt-secret-change-me-32-bytes-minimum}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+      clock-skew: ${JWT_CLOCK_SKEW:30s}
+    refresh-token:
+      ttl: ${REFRESH_TOKEN_TTL:7d}
+    password-policy:
+      min-length: ${PASSWORD_MIN_LENGTH:12}
+      require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:true}
+      require-lowercase: ${PASSWORD_REQUIRE_LOWERCASE:true}
+      require-digit: ${PASSWORD_REQUIRE_DIGIT:true}
+      require-special: ${PASSWORD_REQUIRE_SPECIAL:true}
+    users:
+      - id: ${ADMIN_USER_ID:admin}
+        email: ${ADMIN_USER_EMAIL:admin@example.com}
+        display-name: ${ADMIN_USER_DISPLAY_NAME:Platform Admin}
+        password: ${ADMIN_USER_PASSWORD:ChangeMe123!}
+        roles:
+          - ADMIN
+          - OPERATOR
+          - VIEWER
+      - id: ${OPERATOR_USER_ID:operator}
+        email: ${OPERATOR_USER_EMAIL:operator@example.com}
+        display-name: ${OPERATOR_USER_DISPLAY_NAME:Platform Operator}
+        password: ${OPERATOR_USER_PASSWORD:ChangeMe123!}
+        roles:
+          - OPERATOR
+          - VIEWER
+      - id: ${VIEWER_USER_ID:viewer}
+        email: ${VIEWER_USER_EMAIL:viewer@example.com}
+        display-name: ${VIEWER_USER_DISPLAY_NAME:Platform Viewer}
+        password: ${VIEWER_USER_PASSWORD:ChangeMe123!}
+        roles:
+          - VIEWER

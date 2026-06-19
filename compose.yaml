@@ -1,0 +1,157 @@
+name: device-management-platform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dmp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-device_management}
+      POSTGRES_USER: ${POSTGRES_USER:-dmp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dmp_password}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - dmp-local
+
+  redis:
+    image: redis:7-alpine
+    container_name: dmp-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - dmp-local
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: dmp-kafka
+    restart: unless-stopped
+    environment:
+      CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-9094}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
+      KAFKA_NODE_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports:
+      - '${KAFKA_PORT:-9094}:9094'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1']
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks:
+      - dmp-local
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: dmp-mqtt
+    restart: unless-stopped
+    ports:
+      - '${MQTT_PORT:-1883}:1883'
+      - '${MQTT_WEBSOCKET_PORT:-9001}:9001'
+    volumes:
+      - ./infra/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'mosquitto_pub -h localhost -p 1883 -t dmp/healthcheck -m ok >/dev/null 2>&1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - dmp-local
+
+  device-api:
+    profiles: ['apps']
+    build:
+      context: services/device-api
+    image: device-api:local
+    container_name: dmp-device-api
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${DEVICE_API_PROFILE:-local}
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-device_management}
+      POSTGRES_USER: ${POSTGRES_USER:-dmp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dmp_password}
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MQTT_BROKER_URL: tcp://mqtt:1883
+    ports:
+      - '${DEVICE_API_PORT:-8080}:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mqtt:
+        condition: service_healthy
+    networks:
+      - dmp-local
+
+  admin-portal:
+    profiles: ['apps']
+    build:
+      context: .
+      dockerfile: apps/admin-portal/Dockerfile
+    image: admin-portal:local
+    container_name: dmp-admin-portal
+    restart: unless-stopped
+    ports:
+      - '${ADMIN_PORTAL_PORT:-4200}:8080'
+    depends_on:
+      device-api:
+        condition: service_started
+    networks:
+      - dmp-local
+
+networks:
+  dmp-local:
+    name: dmp-local
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: dmp-postgres-data
+  redis_data:
+    name: dmp-redis-data
+  kafka_data:
+    name: dmp-kafka-data
+  mqtt_data:
+    name: dmp-mqtt-data
+  mqtt_log:
+    name: dmp-mqtt-log

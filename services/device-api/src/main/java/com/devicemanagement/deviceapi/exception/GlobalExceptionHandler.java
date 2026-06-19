@@ -1,11 +1,15 @@
 package com.devicemanagement.deviceapi.exception;
 
+import com.devicemanagement.deviceapi.security.InvalidCredentialsException;
+import com.devicemanagement.deviceapi.security.InvalidRefreshTokenException;
+import com.devicemanagement.deviceapi.security.PasswordPolicyException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -56,6 +60,62 @@ public class GlobalExceptionHandler {
             .build();
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidCredentials(
+      InvalidCredentialsException exception, HttpServletRequest request) {
+    log.warn("Invalid login attempt for path {}", request.getRequestURI());
+    return buildErrorResponse(
+        HttpStatus.UNAUTHORIZED,
+        "INVALID_CREDENTIALS",
+        exception.getMessage(),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(InvalidRefreshTokenException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(
+      InvalidRefreshTokenException exception, HttpServletRequest request) {
+    log.warn("Invalid refresh token for path {}", request.getRequestURI());
+    return buildErrorResponse(
+        HttpStatus.UNAUTHORIZED,
+        "INVALID_REFRESH_TOKEN",
+        exception.getMessage(),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(PasswordPolicyException.class)
+  public ResponseEntity<ErrorResponse> handlePasswordPolicyFailure(
+      PasswordPolicyException exception, HttpServletRequest request) {
+    List<ErrorResponse.FieldErrorDetail> fieldErrors =
+        exception.getViolations().stream()
+            .map(
+                message ->
+                    ErrorResponse.FieldErrorDetail.builder()
+                        .field("password")
+                        .message(message)
+                        .build())
+            .toList();
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("PASSWORD_POLICY_FAILED")
+            .message(exception.getMessage())
+            .path(request.getRequestURI())
+            .fieldErrors(fieldErrors)
+            .build();
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDenied(
+      AccessDeniedException exception, HttpServletRequest request) {
+    log.warn("Forbidden request for path {}", request.getRequestURI());
+    return buildErrorResponse(
+        HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied", request.getRequestURI());
   }
 
   @ExceptionHandler(Exception.class)

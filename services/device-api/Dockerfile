@@ -16,4 +16,6 @@ COPY --from=build /workspace/target/device-api-*.jar app.jar
 
 EXPOSE 8080
 
+USER 10001:10001
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
