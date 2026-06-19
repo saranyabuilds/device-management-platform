@@ -5,16 +5,31 @@ import { BehaviorSubject, Observable } from 'rxjs';
 export interface AdminUser {
   readonly displayName: string;
   readonly email: string;
+  readonly roles: readonly string[];
+  readonly permissions: readonly string[];
 }
 
-const AUTH_STORAGE_KEY = 'admin-portal.authenticated';
+const AUTH_STORAGE_KEY = 'admin-portal.session';
+const SUPER_ADMIN_USER: AdminUser = {
+  displayName: 'Platform Admin',
+  email: 'admin@example.com',
+  roles: ['SUPER_ADMIN', 'ADMIN'],
+  permissions: [
+    'DEVICE_READ',
+    'DEVICE_WRITE',
+    'USER_READ',
+    'USER_WRITE',
+    'ROLE_MANAGE',
+    'AUDIT_READ',
+  ],
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly router = inject(Router);
-  private readonly authenticatedSubject = new BehaviorSubject<boolean>(this.readStoredState());
-  private readonly currentUserSubject = new BehaviorSubject<AdminUser | null>(
-    this.readStoredState() ? { displayName: 'Admin User', email: 'admin@example.com' } : null,
+  private readonly currentUserSubject = new BehaviorSubject<AdminUser | null>(this.readStoredUser());
+  private readonly authenticatedSubject = new BehaviorSubject<boolean>(
+    this.currentUserSubject.value !== null,
   );
 
   readonly authenticated$: Observable<boolean> = this.authenticatedSubject.asObservable();
@@ -24,10 +39,14 @@ export class AuthService {
     return this.authenticatedSubject.value;
   }
 
+  hasPermission(permission: string): boolean {
+    return this.currentUserSubject.value?.permissions.includes(permission) ?? false;
+  }
+
   login(): void {
-    localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(SUPER_ADMIN_USER));
     this.authenticatedSubject.next(true);
-    this.currentUserSubject.next({ displayName: 'Admin User', email: 'admin@example.com' });
+    this.currentUserSubject.next(SUPER_ADMIN_USER);
     void this.router.navigateByUrl('/dashboard');
   }
 
@@ -41,7 +60,17 @@ export class AuthService {
     }
   }
 
-  private readStoredState(): boolean {
-    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+  private readStoredUser(): AdminUser | null {
+    const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!storedSession) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(storedSession) as AdminUser;
+    } catch {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
   }
 }

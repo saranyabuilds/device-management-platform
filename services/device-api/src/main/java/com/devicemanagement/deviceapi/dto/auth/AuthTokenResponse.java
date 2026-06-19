@@ -18,6 +18,6 @@ public record AuthTokenResponse(
         tokenPair.accessTokenExpiresAt(),
         tokenPair.refreshToken(),
         tokenPair.refreshTokenExpiresAt(),
-        AuthUserResponse.from(tokenPair.user()));
+        AuthUserResponse.from(tokenPair.user(), tokenPair.permissions()));
   }
 }

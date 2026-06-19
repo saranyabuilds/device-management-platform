@@ -3,7 +3,7 @@ package com.devicemanagement.deviceapi.security;
 import com.devicemanagement.deviceapi.config.AuthProperties;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -19,11 +19,17 @@ public class JwtTokenService {
   private final AuthProperties authProperties;
   private final JwtEncoder jwtEncoder;
   private final Clock clock;
+  private final RoleManagementService roleManagementService;
 
   public IssuedAccessToken issueAccessToken(AuthenticatedUser user) {
     Instant issuedAt = clock.instant();
     Instant expiresAt = issuedAt.plus(authProperties.jwt().accessTokenTtl());
-    List<String> roles = user.roles().stream().map(UserRole::name).sorted().toList();
+    java.util.List<String> roles = user.roles().stream().sorted().toList();
+    java.util.List<String> permissions =
+        roleManagementService.permissionsForRoles(user.roles()).stream()
+            .map(Permission::name)
+            .sorted()
+            .toList();
 
     JwtClaimsSet claims =
         JwtClaimsSet.builder()
@@ -34,6 +40,7 @@ public class JwtTokenService {
             .claim("email", user.email())
             .claim("name", user.displayName())
             .claim("roles", roles)
+            .claim("permissions", permissions)
             .build();
 
     JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();

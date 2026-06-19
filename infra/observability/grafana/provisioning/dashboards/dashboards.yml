@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Device Management Platform
+    orgId: 1
+    folder: Device Management
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

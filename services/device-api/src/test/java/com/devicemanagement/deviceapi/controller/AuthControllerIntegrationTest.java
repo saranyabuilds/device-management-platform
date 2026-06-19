@@ -42,7 +42,8 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.accessToken").isNotEmpty())
         .andExpect(jsonPath("$.refreshToken").isNotEmpty())
         .andExpect(jsonPath("$.user.email").value("admin@example.com"))
-        .andExpect(jsonPath("$.user.roles[0]").exists());
+        .andExpect(jsonPath("$.user.roles[0]").exists())
+        .andExpect(jsonPath("$.user.permissions[0]").exists());
   }
 
   @Test
@@ -117,7 +118,8 @@ class AuthControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.subject").value("viewer"))
         .andExpect(jsonPath("$.email").value("viewer@example.com"))
-        .andExpect(jsonPath("$.roles[0]").value("VIEWER"));
+        .andExpect(jsonPath("$.roles[0]").value("VIEWER"))
+        .andExpect(jsonPath("$.permissions[0]").value("DEVICE_READ"));
   }
 
   private String login(String email) throws Exception {

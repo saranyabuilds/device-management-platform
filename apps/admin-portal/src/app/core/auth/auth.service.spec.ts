@@ -28,7 +28,8 @@ describe('AuthService', () => {
     service.login();
 
     expect(service.isAuthenticated()).toBe(true);
-    expect(localStorage.getItem('admin-portal.authenticated')).toBe('true');
+    expect(service.hasPermission('ROLE_MANAGE')).toBe(true);
+    expect(localStorage.getItem('admin-portal.session')).toContain('ROLE_MANAGE');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard');
   });
 
@@ -39,7 +40,7 @@ describe('AuthService', () => {
     service.logout();
 
     expect(service.isAuthenticated()).toBe(false);
-    expect(localStorage.getItem('admin-portal.authenticated')).toBeNull();
+    expect(localStorage.getItem('admin-portal.session')).toBeNull();
     expect(router.navigateByUrl).toHaveBeenLastCalledWith('/login');
   });
 });

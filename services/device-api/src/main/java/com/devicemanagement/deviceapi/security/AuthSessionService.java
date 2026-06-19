@@ -10,6 +10,7 @@ public class AuthSessionService {
   private final UserAuthenticationService userAuthenticationService;
   private final JwtTokenService jwtTokenService;
   private final RefreshTokenStore refreshTokenStore;
+  private final RoleManagementService roleManagementService;
 
   public TokenPair login(String email, String password) {
     return issueTokenPair(userAuthenticationService.authenticate(email, password));
@@ -33,6 +34,11 @@ public class AuthSessionService {
     JwtTokenService.IssuedAccessToken accessToken = jwtTokenService.issueAccessToken(user);
     RefreshTokenStore.IssuedRefreshToken refreshToken = refreshTokenStore.issue(user.id());
     return new TokenPair(
-        accessToken.token(), accessToken.expiresAt(), refreshToken.token(), refreshToken.expiresAt(), user);
+        accessToken.token(),
+        accessToken.expiresAt(),
+        refreshToken.token(),
+        refreshToken.expiresAt(),
+        user,
+        roleManagementService.permissionsForRoles(user.roles()));
   }
 }

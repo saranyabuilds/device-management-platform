@@ -31,12 +31,31 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    enabled: ${TRACING_ENABLED:true}
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    propagation:
+      type: w3c
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${OTEL_SERVICE_NAME:${spring.application.name}}
 
 springdoc:
   swagger-ui:
@@ -65,6 +84,7 @@ app:
         display-name: ${ADMIN_USER_DISPLAY_NAME:Platform Admin}
         password: ${ADMIN_USER_PASSWORD:ChangeMe123!}
         roles:
+          - SUPER_ADMIN
           - ADMIN
           - OPERATOR
           - VIEWER

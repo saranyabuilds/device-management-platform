@@ -8,7 +8,13 @@ import { AdminShellComponent } from './admin-shell.component';
 
 describe('AdminShellComponent', () => {
   const authService = {
-    currentUser$: of({ displayName: 'Admin User', email: 'admin@example.com' }),
+    currentUser$: of({
+      displayName: 'Admin User',
+      email: 'admin@example.com',
+      roles: ['SUPER_ADMIN'],
+      permissions: ['ROLE_MANAGE', 'DEVICE_READ', 'AUDIT_READ'],
+    }),
+    hasPermission: jest.fn(() => true),
     logout: jest.fn(),
   };
   const breakpointObserver = {
@@ -18,6 +24,7 @@ describe('AdminShellComponent', () => {
 
   beforeEach(async () => {
     authService.logout.mockReset();
+    authService.hasPermission.mockClear();
     breakpointObserver.observe.mockClear();
     breakpointObserver.isMatched.mockClear();
 

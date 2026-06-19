@@ -1,5 +1,6 @@
 package com.devicemanagement.deviceapi.exception;
 
+import com.devicemanagement.deviceapi.config.CorrelationIdFilter;
 import com.devicemanagement.deviceapi.security.InvalidCredentialsException;
 import com.devicemanagement.deviceapi.security.InvalidRefreshTokenException;
 import com.devicemanagement.deviceapi.security.PasswordPolicyException;
@@ -13,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @RestControllerAdvice
@@ -56,6 +58,7 @@ public class GlobalExceptionHandler {
             .error("VALIDATION_FAILED")
             .message("Request validation failed")
             .path(request.getRequestURI())
+            .correlationId(correlationId())
             .fieldErrors(fieldErrors)
             .build();
 
@@ -104,6 +107,7 @@ public class GlobalExceptionHandler {
             .error("PASSWORD_POLICY_FAILED")
             .message(exception.getMessage())
             .path(request.getRequestURI())
+            .correlationId(correlationId())
             .fieldErrors(fieldErrors)
             .build();
 
@@ -116,6 +120,17 @@ public class GlobalExceptionHandler {
     log.warn("Forbidden request for path {}", request.getRequestURI());
     return buildErrorResponse(
         HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied", request.getRequestURI());
+  }
+
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<ErrorResponse> handleResponseStatusException(
+      ResponseStatusException exception, HttpServletRequest request) {
+    HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+    return buildErrorResponse(
+        status,
+        status.name(),
+        exception.getReason() == null ? status.getReasonPhrase() : exception.getReason(),
+        request.getRequestURI());
   }
 
   @ExceptionHandler(Exception.class)
@@ -138,8 +153,13 @@ public class GlobalExceptionHandler {
             .error(error)
             .message(message)
             .path(path)
+            .correlationId(correlationId())
             .build();
 
     return ResponseEntity.status(status).body(response);
+  }
+
+  private String correlationId() {
+    return org.slf4j.MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY);
   }
 }

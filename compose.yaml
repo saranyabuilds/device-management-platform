@@ -94,6 +94,113 @@ services:
     networks:
       - dmp-local
 
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: dmp-loki
+    restart: unless-stopped
+    command: ['-config.file=/etc/loki/loki-config.yml']
+    ports:
+      - '${LOKI_PORT:-3100}:3100'
+    volumes:
+      - ./infra/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    networks:
+      - dmp-local
+
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: dmp-promtail
+    restart: unless-stopped
+    command: ['-config.file=/etc/promtail/promtail-config.yml']
+    volumes:
+      - ./infra/observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - dmp-local
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: dmp-grafana
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+    ports:
+      - '${GRAFANA_PORT:-3000}:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+      - prometheus
+      - jaeger
+    networks:
+      - dmp-local
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: dmp-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '${JAEGER_UI_PORT:-16686}:16686'
+      - '${OTEL_GRPC_PORT:-4317}:4317'
+      - '${OTEL_HTTP_PORT:-4318}:4318'
+    networks:
+      - dmp-local
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: dmp-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle
+    ports:
+      - '${PROMETHEUS_PORT:-9090}:9090'
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - dmp-local
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.8.0
+    container_name: dmp-kafka-exporter
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka:9092
+      - --web.listen-address=:9308
+    ports:
+      - '${KAFKA_EXPORTER_PORT:-9308}:9308'
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - dmp-local
+
+  mqtt-exporter:
+    image: sapcc/mosquitto-exporter:0.8.0
+    container_name: dmp-mqtt-exporter
+    restart: unless-stopped
+    environment:
+      BROKER_ENDPOINT: tcp://mqtt:1883
+    ports:
+      - '${MQTT_EXPORTER_PORT:-9234}:9234'
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    networks:
+      - dmp-local
+
   device-api:
     profiles: ['apps']
     build:
@@ -109,6 +216,14 @@ services:
       REDIS_URL: redis://redis:6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MQTT_BROKER_URL: tcp://mqtt:1883
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
+      TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-1.0}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-device-api}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://jaeger:4318/v1/traces}
+      OTEL_PROPAGATORS: ${OTEL_PROPAGATORS:-tracecontext,baggage}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=local}
     ports:
       - '${DEVICE_API_PORT:-8080}:8080'
     depends_on:
@@ -120,6 +235,8 @@ services:
         condition: service_healthy
       mqtt:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     networks:
       - dmp-local
 
@@ -155,3 +272,9 @@ volumes:
     name: dmp-mqtt-data
   mqtt_log:
     name: dmp-mqtt-log
+  loki_data:
+    name: dmp-loki-data
+  grafana_data:
+    name: dmp-grafana-data
+  prometheus_data:
+    name: dmp-prometheus-data

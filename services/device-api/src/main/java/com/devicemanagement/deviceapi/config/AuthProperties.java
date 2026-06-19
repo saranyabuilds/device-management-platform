@@ -1,6 +1,5 @@
 package com.devicemanagement.deviceapi.config;
 
-import com.devicemanagement.deviceapi.security.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
@@ -60,5 +59,5 @@ public record AuthProperties(
       @Email @NotBlank String email,
       @NotBlank String displayName,
       @NotBlank String password,
-      @NotEmpty Set<UserRole> roles) {}
+      @NotEmpty Set<String> roles) {}
 }

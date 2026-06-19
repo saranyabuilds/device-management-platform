@@ -31,6 +31,10 @@ export class AdminShellComponent {
     this.authService.logout();
   }
 
+  hasPermission(permission?: string): boolean {
+    return !permission || this.authService.hasPermission(permission);
+  }
+
   closeNavigation(drawer: MatSidenav): void {
     if (this.breakpointObserver.isMatched([Breakpoints.Handset, Breakpoints.TabletPortrait])) {
       void drawer.close();

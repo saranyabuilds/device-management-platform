@@ -13,16 +13,18 @@
 
     <mat-nav-list aria-label="Admin navigation">
       @for (item of navItems; track item.route) {
-        <a
-          mat-list-item
-          [routerLink]="item.route"
-          routerLinkActive="shell__nav-item--active"
-          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
-          (click)="closeNavigation(drawer)"
-        >
-          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-          <span matListItemTitle>{{ item.label }}</span>
-        </a>
+        @if (hasPermission(item.permission)) {
+          <a
+            mat-list-item
+            [routerLink]="item.route"
+            routerLinkActive="shell__nav-item--active"
+            [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+            (click)="closeNavigation(drawer)"
+          >
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
       }
     </mat-nav-list>
   </mat-sidenav>

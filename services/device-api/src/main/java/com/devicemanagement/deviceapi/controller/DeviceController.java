@@ -30,7 +30,7 @@ public class DeviceController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+  @PreAuthorize("hasAuthority('DEVICE_WRITE')")
   @Operation(summary = "Create device", description = "Registers a new hardware device")
   public DeviceResponse createDevice(@Valid @RequestBody DeviceCreateRequest request) {
     log.info("Device creation request received for serialNumber={}", request.serialNumber());
@@ -38,7 +38,7 @@ public class DeviceController {
   }
 
   @GetMapping("/{serialNumber}")
-  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
+  @PreAuthorize("hasAuthority('DEVICE_READ')")
   @Operation(summary = "Get device", description = "Returns device details by serial number")
   public DeviceResponse getDeviceBySerialNumber(@PathVariable String serialNumber) {
     log.info("Device lookup request received for serialNumber={}", serialNumber);
@@ -46,7 +46,7 @@ public class DeviceController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'VIEWER')")
+  @PreAuthorize("hasAuthority('DEVICE_READ')")
   @Operation(summary = "List devices", description = "Returns all in-memory sample devices")
   public List<DeviceResponse> getDevices() {
     log.info("Device list request received");

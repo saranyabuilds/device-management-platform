@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +18,7 @@ public class UserAuthenticationService {
   private final AuthProperties authProperties;
   private final PasswordEncoder passwordEncoder;
   private final PasswordPolicyValidator passwordPolicyValidator;
+  private final RoleManagementService roleManagementService;
   private final Map<String, AuthenticatedUser> usersByEmail = new ConcurrentHashMap<>();
   private final Map<String, AuthenticatedUser> usersById = new ConcurrentHashMap<>();
 
@@ -27,6 +29,7 @@ public class UserAuthenticationService {
         .forEach(
             seedUser -> {
               passwordPolicyValidator.validate(seedUser.password());
+              roleManagementService.validateRoleAssignments(seedUser.roles());
               AuthenticatedUser user =
                   new AuthenticatedUser(
                       seedUser.id(),
@@ -47,6 +50,31 @@ public class UserAuthenticationService {
 
   public Optional<AuthenticatedUser> findById(String id) {
     return Optional.ofNullable(usersById.get(id));
+  }
+
+  public java.util.List<AuthenticatedUser> getUsers() {
+    return usersById.values().stream()
+        .sorted(java.util.Comparator.comparing(AuthenticatedUser::email))
+        .toList();
+  }
+
+  public AuthenticatedUser assignRoles(String userId, Set<String> roles) {
+    roleManagementService.validateRoleAssignments(roles);
+    AuthenticatedUser existing =
+        findById(userId)
+            .orElseThrow(
+                () -> new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+    AuthenticatedUser updated =
+        new AuthenticatedUser(
+            existing.id(),
+            existing.email(),
+            existing.displayName(),
+            existing.passwordHash(),
+            Set.copyOf(roles));
+    usersById.put(updated.id(), updated);
+    usersByEmail.put(updated.email(), updated);
+    return updated;
   }
 
   private String normalizedEmail(String email) {

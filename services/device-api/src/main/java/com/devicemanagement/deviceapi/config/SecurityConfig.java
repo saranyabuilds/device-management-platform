@@ -1,8 +1,12 @@
 package com.devicemanagement.deviceapi.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.devicemanagement.deviceapi.exception.ErrorResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import javax.crypto.SecretKey;
@@ -40,7 +44,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper)
+      throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
@@ -50,7 +55,7 @@ public class SecurityConfig {
                     .authenticated()
                     .requestMatchers("/api/v1/auth/**")
                     .permitAll()
-                    .requestMatchers("/actuator/health/**", "/actuator/info")
+                    .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
                     .permitAll()
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
@@ -60,6 +65,27 @@ public class SecurityConfig {
                     .authenticated())
         .oauth2ResourceServer(
             oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(
+                        (request, response, exception) ->
+                            writeSecurityError(
+                                objectMapper,
+                                response,
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                "UNAUTHORIZED",
+                                "Authentication is required",
+                                request.getRequestURI()))
+                    .accessDeniedHandler(
+                        (request, response, exception) ->
+                            writeSecurityError(
+                                objectMapper,
+                                response,
+                                HttpServletResponse.SC_FORBIDDEN,
+                                "ACCESS_DENIED",
+                                "Access is denied",
+                                request.getRequestURI())))
         .build();
   }
 
@@ -98,9 +124,19 @@ public class SecurityConfig {
 
   private Converter<Jwt, Collection<GrantedAuthority>> roleAuthoritiesConverter() {
     return jwt ->
-        List.copyOf(jwt.getClaimAsStringList("roles") == null ? List.of() : jwt.getClaimAsStringList("roles"))
-            .stream()
-            .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+        java.util.stream.Stream.concat(
+                List.copyOf(
+                        jwt.getClaimAsStringList("roles") == null
+                            ? List.of()
+                            : jwt.getClaimAsStringList("roles"))
+                    .stream()
+                    .map(role -> "ROLE_" + role),
+                List.copyOf(
+                        jwt.getClaimAsStringList("permissions") == null
+                            ? List.of()
+                            : jwt.getClaimAsStringList("permissions"))
+                    .stream())
+            .map(SimpleGrantedAuthority::new)
             .map(GrantedAuthority.class::cast)
             .toList();
   }
@@ -111,5 +147,27 @@ public class SecurityConfig {
       throw new IllegalStateException("app.auth.jwt.secret must be at least 32 bytes");
     }
     return new SecretKeySpec(secret, "HmacSHA256");
+  }
+
+  private void writeSecurityError(
+      ObjectMapper objectMapper,
+      HttpServletResponse response,
+      int status,
+      String error,
+      String message,
+      String path)
+      throws java.io.IOException {
+    response.setStatus(status);
+    response.setContentType("application/json");
+    objectMapper.writeValue(
+        response.getOutputStream(),
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(status)
+            .error(error)
+            .message(message)
+            .path(path)
+            .correlationId(org.slf4j.MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY))
+            .build());
   }
 }
