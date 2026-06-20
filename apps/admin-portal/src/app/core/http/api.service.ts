@@ -17,6 +17,13 @@ export class ApiService {
     return this.http.get<TResponse>(this.url(path), { params: this.params(params) });
   }
 
+  download(path: string, params?: ApiQueryParams): Observable<Blob> {
+    return this.http.get(this.url(path), {
+      params: this.params(params),
+      responseType: 'blob',
+    });
+  }
+
   post<TRequest, TResponse>(path: string, body: TRequest): Observable<TResponse> {
     return this.http.post<TResponse>(this.url(path), body);
   }

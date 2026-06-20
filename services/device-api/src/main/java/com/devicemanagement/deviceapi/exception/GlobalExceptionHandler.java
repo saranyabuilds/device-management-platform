@@ -36,6 +36,38 @@ public class GlobalExceptionHandler {
         HttpStatus.CONFLICT, "DUPLICATE_DEVICE", exception.getMessage(), request.getRequestURI());
   }
 
+  @ExceptionHandler(DeviceRegistrationValidationException.class)
+  public ResponseEntity<ErrorResponse> handleDeviceRegistrationValidationFailure(
+      DeviceRegistrationValidationException exception, HttpServletRequest request) {
+    List<ErrorResponse.FieldErrorDetail> fieldErrors =
+        exception.violations().stream()
+            .map(
+                violation ->
+                    ErrorResponse.FieldErrorDetail.builder()
+                        .field(violation.field())
+                        .message(violation.message())
+                        .build())
+            .toList();
+
+    log.warn(
+        "Device registration validation failure for path {}: {}",
+        request.getRequestURI(),
+        fieldErrors);
+
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("VALIDATION_FAILED")
+            .message(exception.getMessage())
+            .path(request.getRequestURI())
+            .correlationId(correlationId())
+            .fieldErrors(fieldErrors)
+            .build();
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidationFailure(
       MethodArgumentNotValidException exception, HttpServletRequest request) {

@@ -40,7 +40,11 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({
+  AuthProperties.class,
+  DeviceRegistrationProperties.class,
+  DeviceHeartbeatProperties.class
+})
 public class SecurityConfig {
 
   @Bean

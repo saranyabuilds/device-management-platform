@@ -64,6 +64,20 @@ springdoc:
     path: /v3/api-docs
 
 app:
+  devices:
+    registration:
+      serial-number:
+        min-length: ${DEVICE_SERIAL_MIN_LENGTH:6}
+        max-length: ${DEVICE_SERIAL_MAX_LENGTH:64}
+        allowed-pattern: ${DEVICE_SERIAL_ALLOWED_PATTERN:^[A-Z0-9][A-Z0-9-]*$}
+      certificate:
+        issuer-name: ${DEVICE_CERTIFICATE_ISSUER_NAME:Device Management Local CA}
+        issuer-id: ${DEVICE_CERTIFICATE_ISSUER_ID:urn:device-management:local-ca}
+        validity: ${DEVICE_CERTIFICATE_VALIDITY:365d}
+    heartbeat:
+      mqtt-topic: ${DEVICE_HEARTBEAT_TOPIC:devices/{serialNumber}/heartbeat}
+      timeout: ${DEVICE_HEARTBEAT_TIMEOUT:5m}
+      scheduler-enabled: ${DEVICE_HEARTBEAT_SCHEDULER_ENABLED:true}
   auth:
     jwt:
       issuer: ${JWT_ISSUER:device-api}

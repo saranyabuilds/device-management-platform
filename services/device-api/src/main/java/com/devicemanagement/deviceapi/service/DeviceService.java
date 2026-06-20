@@ -1,8 +1,12 @@
 package com.devicemanagement.deviceapi.service;
 
 import com.devicemanagement.deviceapi.dto.DeviceCreateRequest;
+import com.devicemanagement.deviceapi.dto.DeviceHeartbeatRequest;
+import com.devicemanagement.deviceapi.dto.DeviceHeartbeatResponse;
+import com.devicemanagement.deviceapi.dto.DeviceInventoryQuery;
+import com.devicemanagement.deviceapi.dto.DeviceInventoryResponse;
+import com.devicemanagement.deviceapi.dto.DeviceProfileResponse;
 import com.devicemanagement.deviceapi.dto.DeviceResponse;
-import java.util.List;
 
 public interface DeviceService {
 
@@ -10,5 +14,13 @@ public interface DeviceService {
 
   DeviceResponse getDeviceBySerialNumber(String serialNumber);
 
-  List<DeviceResponse> getDevices();
+  DeviceProfileResponse getDeviceProfile(String serialNumber);
+
+  DeviceHeartbeatResponse ingestHeartbeat(String serialNumber, DeviceHeartbeatRequest request);
+
+  int markTimedOutDevicesOffline();
+
+  DeviceInventoryResponse getDevices(DeviceInventoryQuery query);
+
+  String exportDevicesCsv(DeviceInventoryQuery query);
 }

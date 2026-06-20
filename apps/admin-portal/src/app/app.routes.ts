@@ -3,6 +3,7 @@ import { authChildGuard, authGuard } from './core/auth/auth.guard';
 import { AdminShellComponent } from './layout/admin-shell/admin-shell.component';
 import { AuditLogsPageComponent } from './pages/audit-logs/audit-logs-page.component';
 import { DashboardPageComponent } from './pages/dashboard/dashboard-page.component';
+import { DeviceProfilePageComponent } from './pages/devices/device-profile-page.component';
 import { DevicesPageComponent } from './pages/devices/devices-page.component';
 import { FirmwarePageComponent } from './pages/firmware/firmware-page.component';
 import { LoginPageComponent } from './pages/login/login-page.component';
@@ -21,7 +22,18 @@ export const appRoutes: Route[] = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: DashboardPageComponent, title: 'Dashboard' },
-      { path: 'devices', component: DevicesPageComponent, title: 'Devices' },
+      {
+        path: 'devices',
+        component: DevicesPageComponent,
+        title: 'Devices',
+        data: { permission: 'DEVICE_READ' },
+      },
+      {
+        path: 'devices/:serialNumber',
+        component: DeviceProfilePageComponent,
+        title: 'Device Profile',
+        data: { permission: 'DEVICE_READ' },
+      },
       { path: 'firmware', component: FirmwarePageComponent, title: 'Firmware' },
       { path: 'ota-updates', component: OtaUpdatesPageComponent, title: 'OTA Updates' },
       {

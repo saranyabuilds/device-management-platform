@@ -49,9 +49,12 @@ The service starts on port `8080`. Java 17 or newer is required locally.
 - `GET /api/v1/permissions` - List available permissions. Requires `ROLE_MANAGE`.
 - `GET /api/v1/users` - List users with role assignments and effective permissions.
 - `PUT /api/v1/users/{userId}/roles` - Replace a user's assigned roles. Requires `ROLE_MANAGE`.
-- `POST /api/v1/devices` - Create a device.
+- `POST /api/v1/devices` - Register a manufactured device and issue local certificate metadata.
 - `GET /api/v1/devices/{serialNumber}` - Get a device by serial number.
-- `GET /api/v1/devices` - List in-memory devices.
+- `GET /api/v1/devices` - Search, filter, and paginate device inventory. Requires `DEVICE_READ`.
+- `GET /api/v1/devices/export` - Export filtered device inventory as CSV. Requires `DEVICE_READ`.
+- `GET /api/v1/devices/{serialNumber}/profile` - Get detailed diagnostic profile data. Requires `DEVICE_READ`.
+- `POST /api/v1/devices/{serialNumber}/heartbeat` - Ingest a heartbeat and update online/offline state. Requires `DEVICE_WRITE`.
 
 Protected endpoints require an `Authorization: Bearer <accessToken>` header. Device endpoints
 check explicit permissions: `DEVICE_READ` for reads and `DEVICE_WRITE` for creates.
@@ -60,13 +63,203 @@ Example request:
 
 ```json
 {
-  "serialNumber": "SN123",
+  "serialNumber": "SN123456",
   "deviceModel": "Gateway-1000",
   "firmwareVersion": "1.0.0",
   "customerId": "customer-001",
   "location": "Building A"
 }
 ```
+
+Device registration normalizes serial numbers by trimming whitespace and converting
+to uppercase. Serial numbers must be globally unique in the current service store.
+Duplicate registrations return `409 DUPLICATE_DEVICE`. Local defaults allow
+uppercase letters, digits, and hyphens, with length 6-64.
+
+Successful registration returns onboarding and certificate metadata:
+
+```json
+{
+  "id": "generated-device-id",
+  "serialNumber": "SN123456",
+  "status": "ACTIVE",
+  "registrationStatus": "REGISTERED",
+  "onboardingStatus": "PENDING_ACTIVATION",
+  "certificate": {
+    "certificateId": "devcert-generated-id",
+    "issuerId": "urn:device-management:local-ca",
+    "issuerName": "Device Management Local CA",
+    "subject": "CN=SN123456, OU=Devices, O=Device Management Platform",
+    "fingerprintSha256": "sha256-fingerprint",
+    "status": "ISSUED"
+  }
+}
+```
+
+The local certificate generator returns metadata only. It does not log or return
+private keys or device secrets. Replace the local generator with production PKI,
+KMS, HSM, or CA integration when adding persistent device identity management.
+
+Device inventory supports query parameters:
+
+- `serialNumber` - case-insensitive partial serial number search after normalization.
+- `firmwareVersion` - exact firmware version filter.
+- `status` - exact device status filter.
+- `page` - zero-based page number. Defaults to `0`.
+- `size` - page size. Defaults to `20` and is capped at `100`.
+
+Example inventory request:
+
+```bash
+curl 'http://localhost:8080/api/v1/devices?serialNumber=SN123&firmwareVersion=1.0.0&status=ACTIVE&page=0&size=20' \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+Example inventory response:
+
+```json
+{
+  "items": [
+    {
+      "id": "generated-device-id",
+      "serialNumber": "SN123456",
+      "deviceModel": "Gateway-1000",
+      "firmwareVersion": "1.0.0",
+      "customerId": "customer-001",
+      "status": "ACTIVE",
+      "onboardingStatus": "PENDING_ACTIVATION",
+      "certificate": {
+        "certificateId": "devcert-generated-id",
+        "status": "ISSUED"
+      },
+      "createdAt": "2026-06-19T12:00:00",
+      "updatedAt": "2026-06-19T12:00:00"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalItems": 1,
+  "totalPages": 1
+}
+```
+
+Example CSV export:
+
+```bash
+curl -OJ 'http://localhost:8080/api/v1/devices/export?serialNumber=SN123&status=ACTIVE' \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+CSV export includes inventory-safe metadata such as device ID, serial number,
+model, firmware version, customer ID, status, onboarding status, connectivity
+status, last-seen timestamp, certificate ID, and timestamps. It does not include
+private keys, tokens, secrets, or sensitive certificate material.
+
+Heartbeat ingestion updates `lastSeenAt` and `connectivityStatus` for registered
+devices. Heartbeat timestamps are parsed as instants and stored as UTC local
+timestamps. Older out-of-order heartbeats are accepted by the API but ignored for
+state progression, so `lastSeenAt` never moves backward.
+
+Example heartbeat request:
+
+```bash
+curl -X POST 'http://localhost:8080/api/v1/devices/SN123456/heartbeat' \
+  -H 'Authorization: Bearer <accessToken>' \
+  -H 'Content-Type: application/json' \
+  -d '{"timestamp":"2026-06-19T12:05:00Z","firmwareVersion":"1.0.1","status":"ACTIVE"}'
+```
+
+Example heartbeat response:
+
+```json
+{
+  "serialNumber": "SN123456",
+  "lastSeenAt": "2026-06-19T12:05:00",
+  "connectivityStatus": "ONLINE",
+  "accepted": true
+}
+```
+
+MQTT heartbeat publishing is configured with `DEVICE_HEARTBEAT_TOPIC`; the local
+default is `devices/{serialNumber}/heartbeat`. The expected MQTT payload matches
+the HTTP heartbeat body:
+
+```json
+{
+  "timestamp": "2026-06-19T12:05:00Z",
+  "firmwareVersion": "1.0.1",
+  "status": "ACTIVE"
+}
+```
+
+The current service contains the reusable heartbeat ingestion/state engine. Add
+an MQTT consumer that subscribes to the configured topic and calls the same
+service method when production MQTT ingestion is wired into `device-api`.
+Devices transition from `ONLINE` to `OFFLINE` after `DEVICE_HEARTBEAT_TIMEOUT`
+when the scheduler is enabled.
+
+Device profile returns diagnostic details for support workflows:
+
+```bash
+curl 'http://localhost:8080/api/v1/devices/SN123456/profile' \
+  -H 'Authorization: Bearer <accessToken>'
+```
+
+Example profile response:
+
+```json
+{
+  "device": {
+    "id": "generated-device-id",
+    "serialNumber": "SN123456",
+    "deviceModel": "Gateway-1000",
+    "firmwareVersion": "1.0.0",
+    "customerId": "customer-001",
+    "status": "ACTIVE",
+    "registrationStatus": "REGISTERED",
+    "onboardingStatus": "PENDING_ACTIVATION",
+    "certificateStatus": "ISSUED",
+    "connectivityStatus": "ONLINE",
+    "createdAt": "2026-06-19T12:00:00",
+    "updatedAt": "2026-06-19T12:00:00"
+  },
+  "lastSeenAt": "2026-06-19T12:05:00",
+  "healthIndicators": [
+    {
+      "name": "Connectivity",
+      "state": "HEALTHY",
+      "summary": "Last heartbeat received"
+    }
+  ],
+  "firmwareHistory": [
+    {
+      "firmwareVersion": "1.0.0",
+      "updatedAt": "2026-06-19T12:00:00",
+      "updateSource": "REGISTRATION",
+      "status": "SUCCESS",
+      "failureReason": null
+    }
+  ],
+  "eventTimeline": [
+    {
+      "timestamp": "2026-06-19T12:05:00",
+      "eventType": "HEARTBEAT",
+      "severity": "INFO",
+      "source": "device-api",
+      "message": "Device heartbeat observed",
+      "correlationId": null,
+      "traceId": null
+    }
+  ]
+}
+```
+
+Health indicator states are `HEALTHY`, `WARNING`, `CRITICAL`, and `UNKNOWN`.
+Device events are returned newest first and include severity values such as
+`INFO`, `WARNING`, and `ERROR` as telemetry integrations are added. The current
+local implementation derives profile data from the in-memory device store and
+sample lifecycle events; replace it with persisted telemetry, firmware rollout,
+and event data when those services are introduced.
 
 ## Swagger
 
@@ -82,6 +275,9 @@ Local defaults are defined in `application.yml` and can be overridden with envir
 - `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`
 - `OAUTH2_AUTHORIZATION_URI`, `OAUTH2_TOKEN_URI`, `OAUTH2_JWK_SET_URI`, `OAUTH2_USER_INFO_URI`
 - `PASSWORD_MIN_LENGTH`, `PASSWORD_REQUIRE_UPPERCASE`, `PASSWORD_REQUIRE_LOWERCASE`, `PASSWORD_REQUIRE_DIGIT`, `PASSWORD_REQUIRE_SPECIAL`
+- `DEVICE_SERIAL_MIN_LENGTH`, `DEVICE_SERIAL_MAX_LENGTH`, `DEVICE_SERIAL_ALLOWED_PATTERN`
+- `DEVICE_CERTIFICATE_ISSUER_NAME`, `DEVICE_CERTIFICATE_ISSUER_ID`, `DEVICE_CERTIFICATE_VALIDITY`
+- `DEVICE_HEARTBEAT_TOPIC`, `DEVICE_HEARTBEAT_TIMEOUT`, `DEVICE_HEARTBEAT_SCHEDULER_ENABLED`
 - `ADMIN_USER_EMAIL`, `ADMIN_USER_PASSWORD`, `OPERATOR_USER_EMAIL`, `OPERATOR_USER_PASSWORD`, `VIEWER_USER_EMAIL`, `VIEWER_USER_PASSWORD`
 
 `JWT_SECRET` must be at least 32 bytes and should be provided from a secret manager in shared

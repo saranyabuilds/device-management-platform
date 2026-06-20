@@ -44,4 +44,17 @@ describe('ApiService', () => {
     expect(request.request.body).toEqual({ serialNumber: 'SN-001' });
     request.flush({ id: 'device-1' });
   });
+
+  it('should build blob download requests', () => {
+    service.download('/devices/export', { serialNumber: 'SN-001' }).subscribe((response) => {
+      expect(response.type).toBe('text/csv');
+    });
+
+    const request = httpTesting.expectOne(
+      'http://localhost:8080/api/v1/devices/export?serialNumber=SN-001',
+    );
+    expect(request.request.method).toBe('GET');
+    expect(request.request.responseType).toBe('blob');
+    request.flush(new Blob(['deviceId,serialNumber'], { type: 'text/csv' }));
+  });
 });

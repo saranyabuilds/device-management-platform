@@ -4,5 +4,6 @@ export interface Device {
   firmwareVersion: string;
   model: string;
   status: 'ACTIVE' | 'INACTIVE' | 'DECOMMISSIONED';
+  connectivityStatus?: 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
   lastSeenAt?: string;
 }

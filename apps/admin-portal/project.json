@@ -12,6 +12,7 @@
       "options": {
         "outputPath": "dist/apps/admin-portal",
         "browser": "apps/admin-portal/src/main.ts",
+        "index": "apps/admin-portal/src/index.html",
         "tsConfig": "apps/admin-portal/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "progress": false,
