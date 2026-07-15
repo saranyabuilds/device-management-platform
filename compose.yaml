@@ -94,6 +94,54 @@ services:
     networks:
       - dmp-local
 
+  emqx:
+    image: emqx/emqx:5.8.6
+    container_name: dmp-emqx
+    restart: unless-stopped
+    environment:
+      EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:-device-management-emqx-local-cookie}
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:-admin}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:-public-emqx-local-admin-change-me}
+      EMQX_LISTENERS__TCP__DEFAULT__BIND: '"0.0.0.0:1883"'
+      EMQX_LISTENERS__SSL__DEFAULT__BIND: '"0.0.0.0:8883"'
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE: /opt/emqx/etc/certs/ca.crt
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE: /opt/emqx/etc/certs/server.crt
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE: /opt/emqx/etc/certs/server.key
+      EMQX_LISTENERS__WS__DEFAULT__BIND: '"0.0.0.0:8083"'
+      EMQX_DASHBOARD__LISTENERS__HTTP__BIND: '"0.0.0.0:18083"'
+      EMQX_MQTT__MAX_PACKET_SIZE: ${EMQX_MQTT_MAX_PACKET_SIZE:-1MB}
+      EMQX_MQTT__SESSION_EXPIRY_INTERVAL: ${EMQX_SESSION_EXPIRY_INTERVAL:-2h}
+      EMQX_AUTHENTICATION__1__MECHANISM: password_based
+      EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+      EMQX_AUTHENTICATION__1__USER_ID_TYPE: username
+      EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME: sha256
+      EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION: disable
+      EMQX_AUTHENTICATION__1__BOOTSTRAP_FILE: /opt/emqx/etc/auth/dev-users.csv
+      EMQX_AUTHENTICATION__1__BOOTSTRAP_TYPE: plain
+      EMQX_AUTHORIZATION__NO_MATCH: deny
+      EMQX_AUTHORIZATION__SOURCES__1__TYPE: file
+      EMQX_AUTHORIZATION__SOURCES__1__ENABLE: 'true'
+      EMQX_AUTHORIZATION__SOURCES__1__PATH: /opt/emqx/etc/acl/dev-acl.conf
+    ports:
+      - '${EMQX_MQTT_PORT:-1884}:1883'
+      - '${EMQX_MQTT_TLS_PORT:-8883}:8883'
+      - '${EMQX_WEBSOCKET_PORT:-8083}:8083'
+      - '${EMQX_DASHBOARD_PORT:-18083}:18083'
+    volumes:
+      - ./infra/emqx/auth/dev-users.csv:/opt/emqx/etc/auth/dev-users.csv:ro
+      - ./infra/emqx/acl/dev-acl.conf:/opt/emqx/etc/acl/dev-acl.conf:ro
+      - ./infra/emqx/certs/dev:/opt/emqx/etc/certs:ro
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+    healthcheck:
+      test: ['CMD-SHELL', '/opt/emqx/bin/emqx ctl status >/dev/null 2>&1']
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks:
+      - dmp-local
+
   loki:
     image: grafana/loki:3.2.1
     container_name: dmp-loki
@@ -272,6 +320,10 @@ volumes:
     name: dmp-mqtt-data
   mqtt_log:
     name: dmp-mqtt-log
+  emqx_data:
+    name: dmp-emqx-data
+  emqx_log:
+    name: dmp-emqx-log
   loki_data:
     name: dmp-loki-data
   grafana_data:

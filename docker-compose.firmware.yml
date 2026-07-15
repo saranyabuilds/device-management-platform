@@ -1,0 +1,191 @@
+version: '3.9'
+
+services:
+  # AWS S3 Compatible Storage - MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: firmware-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/minio/data
+    command: minio server /minio/data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - firmware-network
+
+  # MinIO Client - Create buckets
+  minio-init:
+    image: minio/mc:latest
+    container_name: firmware-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add minio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb --ignore-existing minio/firmware-artifacts;
+      /usr/bin/mc version enable minio/firmware-artifacts;
+      /usr/bin/mc encrypt set sse-s3 minio/firmware-artifacts;
+      "
+    networks:
+      - firmware-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: firmware-postgres
+    environment:
+      POSTGRES_USER: firmware
+      POSTGRES_PASSWORD: firmware-secure-password
+      POSTGRES_DB: firmware_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firmware"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - firmware-network
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: firmware-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - firmware-network
+
+  # Firmware API Service
+  firmware-api:
+    build:
+      context: ../..
+      dockerfile: apps/firmware-api/Dockerfile
+    container_name: firmware-api
+    ports:
+      - "3000:3000"
+    environment:
+      # S3 Configuration
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      S3_ENDPOINT: http://minio:9000
+      FIRMWARE_S3_BUCKET: firmware-artifacts
+      PRESIGNED_URL_EXPIRATION_SECONDS: "3600"
+      
+      # Database Configuration (when implemented)
+      DATABASE_URL: postgresql://firmware:firmware-secure-password@postgres:5432/firmware_db
+      
+      # Signing Keys (development defaults)
+      FIRMWARE_SIGNING_PRIVATE_KEY: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEpAIBAAKCAQEA2Z2uZvxWB4q4UL5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        B8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        B8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        B8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        B8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        B8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5x
+        rLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqL
+        rLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLQIDAQABAoIB
+        ---
+        -----END RSA PRIVATE KEY-----
+      FIRMWARE_SIGNING_PUBLIC_KEY: |
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Z2uZvxWB4q4UL5xB8Z5
+        rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5
+        rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5
+        rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5
+        rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5
+        rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5rK5xB8Z5
+        rLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqL
+        rLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLrLqLQIDAQAB
+        -----END PUBLIC KEY-----
+      FIRMWARE_SIGNING_PUBLIC_KEY_ID: dev-key-2026-06
+      
+      # Node environment
+      NODE_ENV: development
+    depends_on:
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - firmware-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: firmware-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - firmware-api
+    networks:
+      - firmware-network
+
+  # Health Check Dashboard (optional)
+  curl:
+    image: curlimages/curl:latest
+    container_name: firmware-health-check
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          echo "=== Firmware API Health ===" 
+          curl -s http://firmware-api:3000/health || echo "API is down"
+          echo ""
+          echo "=== MinIO Health ==="
+          curl -s http://minio:9000/minio/health/live && echo "MinIO is healthy" || echo "MinIO is down"
+          echo ""
+          sleep 30
+        done
+    depends_on:
+      - firmware-api
+      - minio
+    networks:
+      - firmware-network
+
+volumes:
+  minio_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  firmware-network:
+    driver: bridge

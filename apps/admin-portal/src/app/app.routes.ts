@@ -8,6 +8,8 @@ import { DevicesPageComponent } from './pages/devices/devices-page.component';
 import { FirmwarePageComponent } from './pages/firmware/firmware-page.component';
 import { LoginPageComponent } from './pages/login/login-page.component';
 import { NotFoundPageComponent } from './pages/not-found/not-found-page.component';
+import { OtaUpdateCreatePageComponent } from './pages/ota-updates/ota-update-create-page.component';
+import { OtaUpdateDetailPageComponent } from './pages/ota-updates/ota-update-detail-page.component';
 import { OtaUpdatesPageComponent } from './pages/ota-updates/ota-updates-page.component';
 import { SettingsPageComponent } from './pages/settings/settings-page.component';
 import { UsersPageComponent } from './pages/users/users-page.component';
@@ -36,6 +38,8 @@ export const appRoutes: Route[] = [
       },
       { path: 'firmware', component: FirmwarePageComponent, title: 'Firmware' },
       { path: 'ota-updates', component: OtaUpdatesPageComponent, title: 'OTA Updates' },
+      { path: 'ota-updates/new', component: OtaUpdateCreatePageComponent, title: 'Create Campaign' },
+      { path: 'ota-updates/:id', component: OtaUpdateDetailPageComponent, title: 'Campaign Details' },
       {
         path: 'users',
         component: UsersPageComponent,

@@ -1,0 +1,3 @@
+user_id,password,is_superuser
+device_SN123456,dev-device-SN123456-change-me,false
+device_SN654321,dev-device-SN654321-change-me,false

@@ -1,0 +1,32 @@
+{
+  "name": "device-simulator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/device-simulator/src",
+  "projectType": "application",
+  "tags": ["scope:tools", "type:simulator"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/tools/device-simulator",
+        "main": "tools/device-simulator/src/main.ts",
+        "tsConfig": "tools/device-simulator/tsconfig.lib.json"
+      }
+    },
+    "run": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node dist/tools/device-simulator/src/main.js"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/tools/device-simulator"],
+      "options": {
+        "jestConfig": "tools/device-simulator/jest.config.cts"
+      }
+    }
+  }
+}

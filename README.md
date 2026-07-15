@@ -45,6 +45,7 @@ deploy/
   k8s/
 tools/
   scripts/
+  device-simulator/
   generators/
 docs/
   architecture/
@@ -106,6 +107,12 @@ Validate the Spring Boot device API:
 ```bash
 pnpm test:device-api
 pnpm build:device-api
+```
+
+Run the local virtual device simulator in dry-run mode:
+
+```bash
+pnpm simulate:devices -- --dry-run --count 1 --duration 5s
 ```
 
 Build Docker images locally:
